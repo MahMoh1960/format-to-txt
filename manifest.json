@@ -1,0 +1,22 @@
+{
+  "name": "Assistant de Lecture PDF",
+  "short_name": "Asst PDF",
+  "description": "Outil d'analyse documentaire avec thème bleu nuit.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b1d3a",
+  "theme_color": "#0b1d3a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

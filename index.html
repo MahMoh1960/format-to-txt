@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistant de Lecture PDF</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b1d3a">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b1d3a; padding: 20px; color: #f1c40f; margin: 0; }
+        .container { max-width: 600px; margin: auto; background: #152b52; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #f1c40f; }
+        h2, h3 { color: #f1c40f; text-align: center; }
+        textarea, input, select { width: 100%; padding: 10px; margin-top: 10px; border: 1px solid #f1c40f; border-radius: 5px; box-sizing: border-box; background-color: #0b1d3a; color: #f1c40f; }
+        textarea::placeholder, input::placeholder { color: #8f7918; }
+        textarea { height: 150px; resize: vertical; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        button { flex: 1; padding: 10px; border: none; border-radius: 5px; background-color: #f1c40f; color: #0b1d3a; cursor: pointer; font-weight: bold; font-size: 14px; }
+        button:hover { background-color: #f39c12; }
+        .notes-section { margin-top: 30px; border-top: 2px solid #f1c40f; padding-top: 20px; }
+        .note-card { background: #1e3a6d; padding: 10px; margin-top: 10px; border-radius: 5px; border-left: 4px solid #f1c40f; color: #fff; word-wrap: break-word; }
+        .note-card strong { color: #f1c40f; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Outil d'Analyse Documentaire</h2>
+    
+    <textarea id="inputText" placeholder="Collez le texte copié du PDF ici..."></textarea>
+
+    <div class="btn-group">
+        <button onclick="cleanText()">1. Nettoyer</button>
+        <button onclick="speakText()">🔊 Écouter</button>
+    </div>
+
+    <div class="btn-group">
+        <select id="langSelect">
+            <option value="fr|ar">Français ➔ Arabe</option>
+            <option value="fr|en">Français ➔ Anglais</option>
+            <option value="en|fr">Anglais ➔ Français</option>
+            <option value="ar|fr">Arabe ➔ Français</option>
+        </select>
+        <button onclick="translateText()">2. Traduire</button>
+        <button onclick="summarizeText()">3. Résumer</button>
+    </div>
+
+    <div class="notes-section">
+        <h3>Carnet de Notes</h3>
+        <input type="text" id="noteTitle" placeholder="Titre de la note (ex: Chapitre 1 - Stratégie)">
+        <button onclick="saveNote()" style="margin-top: 10px;">💾 Enregistrer</button>
+        <div id="savedNotes"></div>
+    </div>
+</div>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.log('Erreur SW', err));
+        });
+    }
+
+    function cleanText() {
+        let text = document.getElementById("inputText").value;
+        text = text.replace(/-\n/g, "").replace(/\n/g, " ").replace(/\s{2,}/g, " ");
+        document.getElementById("inputText").value = text;
+    }
+
+    function speakText() {
+        let text = document.getElementById("inputText").value;
+        if (!text) return;
+        let speech = new SpeechSynthesisUtterance(text);
+        if(text.match(/[a-zA-Z]/)) { speech.lang = 'fr-FR'; }
+        if(text.match(/[\u0600-\u06FF]/)) { speech.lang = 'ar-SA'; }
+        window.speechSynthesis.speak(speech);
+    }
+
+    async function translateText() {
+        let text = document.getElementById("inputText").value;
+        let langPair = document.getElementById("langSelect").value;
+        if (!text) return;
+        
+        let originalText = text;
+        document.getElementById("inputText").value = "Traduction en cours...";
+        try {
+            let response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`);
+            let data = await response.json();
+            document.getElementById("inputText").value = data.responseData.translatedText;
+        } catch (error) {
+            document.getElementById("inputText").value = originalText;
+            alert("Erreur de traduction. Vérifiez votre connexion.");
+        }
+    }
+
+    function summarizeText() {
+        let text = document.getElementById("inputText").value;
+        if (!text) return;
+        alert("La fonction de résumé automatique nécessitera l'intégration d'une API (comme Gemini) ultérieurement.");
+        document.getElementById("inputText").value = "[RÉSUMÉ À VENIR] " + text;
+    }
+
+    function saveNote() {
+        let title = document.getElementById("noteTitle").value || "Note sans titre";
+        let content = document.getElementById("inputText").value;
+        if (!content) return;
+
+        let notes = JSON.parse(localStorage.getItem("pdfNotes") || "[]");
+        notes.push({ title: title, content: content });
+        localStorage.setItem("pdfNotes", JSON.stringify(notes));
+        
+        document.getElementById("noteTitle").value = "";
+        displayNotes();
+    }
+
+    function displayNotes() {
+        let notes = JSON.parse(localStorage.getItem("pdfNotes") || "[]");
+        let html = "";
+        notes.reverse().forEach((note) => {
+            html += `<div class="note-card"><strong>${note.title}</strong><br><small>${note.content}</small></div>`;
+        });
+        document.getElementById("savedNotes").innerHTML = html;
+    }
+
+    window.onload = displayNotes;
+</script>
+</body>
+</html>
